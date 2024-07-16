@@ -1,22 +1,37 @@
+# prediction_script.py
+
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+import numpy as np
 import cv2
 import mediapipe as mp
-import numpy as np
-import tensorflow as tf
 
-# Inicializar o módulo de mãos do MediaPipe
+# Parâmetros globais
+img_width, img_height = 64, 64
+model_path = 'modelo_gestos.h5'  # Caminho do modelo salvo
+
+# Carregar o modelo treinado
+model = tf.keras.models.load_model(model_path)
+
+# Inicializar MediaPipe para detecção de mãos
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
+
+# Lista de gestos correspondentes às classes do modelo
+gestures = ['gesto_1', 'gesto_2', 'gesto_3', ...]  # Substitua pelos nomes reais dos gestos
+
+def predict_gesture(landmarks, model):
+    landmarks = np.array(landmarks).flatten().reshape(1, -1) / 255.0
+    predictions = model.predict(landmarks)
+    predicted_class = np.argmax(predictions)
+    return predicted_class
 
 # Inicializar a captura de vídeo
 cap = cv2.VideoCapture(0)
 
-# Carregar o modelo de reconhecimento de gestos
-# Você precisará treinar um modelo e carregá-lo aqui
-# Por exemplo: model = tf.keras.models.load_model('modelo_gestos.h5')
-
 with mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=2,  # Modificado para rastrear até 2 mãos
+    max_num_hands=2,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5) as hands:
     
@@ -36,16 +51,17 @@ with mp_hands.Hands(
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(
-                    image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                # Extraia os pontos de referência (landmarks) da mão
+                # Extrair os landmarks
                 landmarks = []
                 for lm in hand_landmarks.landmark:
                     landmarks.append([lm.x, lm.y, lm.z])
 
-                # Aqui você pode passar os landmarks para o seu modelo para reconhecer o gesto
-                # Exemplo: gesture = model.predict(np.array([landmarks]).reshape(1, -1))
+                # Prever o gesto usando o modelo
+                predicted_class = predict_gesture(landmarks, model)
+                gesture = gestures[predicted_class]
+                print(f'Gesto reconhecido: {gesture}')
 
         cv2.imshow('Reconhecimento de Mãos', image)
         if cv2.waitKey(1) & 0xFF == ord('q'):

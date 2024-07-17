@@ -1,8 +1,7 @@
-import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
-import os
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 # Parâmetros globais
 img_width, img_height = 64, 64
@@ -16,7 +15,10 @@ def create_data_generators(train_dir, test_dir, img_width, img_height, batch_siz
         rescale=1./255,
         shear_range=0.2,
         zoom_range=0.2,
-        horizontal_flip=True
+        horizontal_flip=True,
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2
     )
 
     test_datagen = ImageDataGenerator(rescale=1./255)
@@ -40,10 +42,13 @@ def create_data_generators(train_dir, test_dir, img_width, img_height, batch_siz
 def create_model(img_width, img_height, num_classes):
     model = Sequential([
         Conv2D(32, (3, 3), activation='relu', input_shape=(img_width, img_height, 3)),
+        BatchNormalization(),
         MaxPooling2D(pool_size=(2, 2)),
         Conv2D(64, (3, 3), activation='relu'),
+        BatchNormalization(),
         MaxPooling2D(pool_size=(2, 2)),
         Conv2D(128, (3, 3), activation='relu'),
+        BatchNormalization(),
         MaxPooling2D(pool_size=(2, 2)),
         Flatten(),
         Dense(128, activation='relu'),
@@ -55,18 +60,27 @@ def create_model(img_width, img_height, num_classes):
     return model
 
 def train_model(model, train_generator, validation_generator, epochs, batch_size):
+    steps_per_epoch = train_generator.samples // batch_size
+    validation_steps = validation_generator.samples // batch_size
+
+    callbacks = [
+        EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
+        ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True)
+    ]
+
     history = model.fit(
         train_generator,
-        steps_per_epoch=train_generator.samples // batch_size,
+        steps_per_epoch=steps_per_epoch,
         validation_data=validation_generator,
-        validation_steps=validation_generator.samples // batch_size,
-        epochs=epochs
+        validation_steps=validation_steps,
+        epochs=epochs,
+        callbacks=callbacks
     )
-    model.save('modelo_gestos.h5')
     return history
 
 def evaluate_model(model, validation_generator, batch_size):
-    loss, accuracy = model.evaluate(validation_generator, steps=validation_generator.samples // batch_size)
+    steps = validation_generator.samples // batch_size
+    loss, accuracy = model.evaluate(validation_generator, steps=steps)
     print(f'Loss: {loss}')
     print(f'Accuracy: {accuracy}')
 
@@ -77,4 +91,5 @@ if __name__ == "__main__":
     model = create_model(img_width, img_height, num_classes)
     
     train_model(model, train_generator, validation_generator, epochs, batch_size)
+    model.save('modelo_gestos.keras')
     evaluate_model(model, validation_generator, batch_size)

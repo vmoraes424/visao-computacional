@@ -4,6 +4,8 @@ Aluno: Vinícius Cruz de Moraes
 
 Este projeto foi desenvolvido como parte do curso de Inteligência Artificial na faculdade. O objetivo é reconhecer gestos de Libras em tempo real utilizando técnicas de visão computacional e aprendizado profundo.
 
+Atualmente o modelo não está muito bem treinado, mas ele reconhece bem o gesto da letra C e L
+
 ## Funcionalidades
 
 - **Captura de Vídeo**: Utiliza a câmera para capturar o gesto de Libras.
